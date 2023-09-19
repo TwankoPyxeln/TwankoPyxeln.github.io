@@ -126,23 +126,51 @@ function movePlayer() {
 }
 
 class Ally {
-    constructor(x, y) {
+    constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.hp = 10; // Example HP value, can be adjusted
+        this.type = type;
+        this.hp = 100; 
+        this.lastShot = Date.now();
+        this.shootCooldown = 0; // Millisekunden
+		this.color = "aaa"
+
+        if (type === 'fighter') {
+            this.damage = 10;
+            this.range = 40;
+            this.radius = 15; 
+        } else if (type === 'shooter') {
+            this.damage = 5;
+            this.range = 100;
+            this.radius = 10; 
+        }
     }
-    
-    moveTowards(targetX, targetY, speed) {
-        const dx = targetX - this.x;
-        const dy = targetY - this.y;
+
+    canShoot() {
+        return Date.now() - this.lastShot > this.shootCooldown;
+    }
+
+    shoot(enemies) {
+        if (this.type !== 'shooter' || !this.canShoot()) return;
+        
+        const target = getClosestEnemy(this);
+        if (!target) return;
+		projectiles.push(new Projectile(this.x, this.y, target.dx, target.dy, 'orange'));
+		this.lastShot = Date.now();
+    }
+
+    // Diese Methode prüft, ob der Ally in Reichweite eines Feindes ist
+    isInRange(enemy) {
+        const dx = enemy.x - this.x;
+        const dy = enemy.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance === 0) return;
-
-        this.x += (dx / distance) * speed;
-        this.y += (dy / distance) * speed;
+        return distance <= this.range;
     }
+
+    // Weitere Methoden können hier hinzugefügt werden, z.B. attackEnemy(), moveToPosition(), etc.
 }
+
 
 
 function attack() {
@@ -210,6 +238,10 @@ function update() {
 		}
 	}
 
+    for (let ally of allies) {
+		ally.shoot(enemies);
+    }
+
 	// ... weitere Spiellogik (Kollisionserkennung, Gesundheit, usw.)
 
 	draw();
@@ -259,11 +291,15 @@ function draw() {
             ctx.fill();
         }
     });
+	
+    drawPlayerMoney();
+	drawButtons()
 }
 
 const allies = [];  // Liste von Mitkämpfern
 
 // Eine Funktion zum Erzeugen eines neuen Mitkämpfers
+/*
 function spawnAlly(x, y) {
     const ally = {
         x: x,
@@ -275,7 +311,7 @@ function spawnAlly(x, y) {
     };
     allies.push(ally);
 }
-
+*/
 function allyAttack(ally) {
     const attackRadius = 30;  // Radius, in dem der Ally angreifen kann
     const damage = 1;  // Schadensmenge, die der Ally pro Angriff verursacht
@@ -313,22 +349,25 @@ function updateAllies() {
 
 
 function drawAllies() {
-    ctx.fillStyle = "cyan";
-    allies.forEach(ally => {
+    for (let ally of allies) {
         ctx.beginPath();
         ctx.arc(ally.x, ally.y, ally.radius, 0, Math.PI * 2);
+        ctx.fillStyle = ally.type === "fighter" ? "#aaa" : "purple";
         ctx.fill();
-
-        // Zeichne die Angriffsreichweite
-        ctx.strokeStyle = "rgba(0,255,255,0.3)";  // Hellcyan und halbtransparent
-        ctx.beginPath();
-        ctx.arc(ally.x, ally.y, ally.attackRange, 0, Math.PI * 2);
-        ctx.stroke();
-    });
+        ctx.closePath();
+    }
 }
 
 
+
 function initializeGame() {
+	spawnAlly("shooter")
+	spawnAlly("shooter")
+	spawnAlly("shooter")
+	spawnAlly("fighter")
+	spawnAlly("fighter")
+	
+	/*
     spawnAlly(100, canvas.height / 2);  // Mitkämpfer links
     spawnAlly(canvas.width - 100, canvas.height / 2);  // Mitkämpfer rechts
     //spawnAlly(canvas.width / 2, 100);  // Mitkämpfer oben
@@ -336,6 +375,7 @@ function initializeGame() {
     allies.push(new ShooterAlly(250, 250));  // Add a shooter ally for testing
     allies.push(new ShooterAlly(290, 250));  // Add a shooter ally for testing
     allies.push(new ShooterAlly(230, 250));  // Add a shooter ally for testing
+	*/
 }
 
 function getDirectionToClosestEnemy(ally) {
@@ -449,15 +489,15 @@ function getClosestEnemy(entity) {
     enemies.forEach(enemy => {
         const dx = enemy.x - entity.x;
         const dy = enemy.y - entity.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = (dx * dx + dy * dy);
 
         if (distance < closestDistance) {
             closestDistance = distance;
             closestEnemy = enemy;
         }
     });
-
-    return closestEnemy; // This will be null if there are no enemies
+	
+    return {dx: closestEnemy.x, dy: closestEnemy.y}; // This will be null if there are no enemies
 }
 
 
@@ -544,7 +584,94 @@ function dealDamageToClosestEnemy(projectile) {
 }
 
 
+let playerMoney = 100; // Startgeldbetrag für den Spieler
 
+// Funktion zum Hinzufügen von Geld, wenn ein Feind besiegt wird
+function addMoney(amount) {
+    playerMoney += amount;
+    // Aktualisiere das Geld-Display (wenn vorhanden)
+}
+
+// Funktion zum Spawnen eines Verbündeten
+function spawnAlly(type) {
+	var ally = new Ally(canvas.width / 2 + Math.random(), canvas.height / 2 + Math.random(), type)
+	allies.push(ally);
+	return ally
+}
+
+// Ändere die Funktion, die Schaden am Feind verursacht, um Geld hinzuzufügen, wenn ein Feind besiegt wird:
+function dealDamageToEnemy(attacker, enemy) {
+    enemy.hp -= attacker.damage;
+
+    if (enemy.hp <= 0) {
+        // Entferne den Feind aus der Liste
+        const index = enemies.indexOf(enemy);
+        if (index !== -1) {
+            enemies.splice(index, 1);
+        }
+        // Füge Geld hinzu, wenn der Feind besiegt wird
+        addMoney(10);  // Zum Beispiel 10 Einheiten Geld für jeden besiegten Feind
+    }
+}
+
+const buttons = [
+    {
+        x: 10,
+        y: canvas.height-50-10,
+        width: 150,
+        height: 50,
+        text: "Fighter (50)",
+        cost: 50,
+        onClick: () => spawnAlly("fighter")
+    },
+    {
+        x: 170,
+        y: canvas.height-50-10,
+        width: 150,
+        height: 50,
+        text: "Shooter (75)",
+        cost: 75,
+        onClick: () => spawnAlly("shooter")
+    }
+];
+
+function drawButtons() {
+    ctx.fillStyle = "#ccc";
+    ctx.strokeStyle = "#000";
+    for (let button of buttons) {
+		ctx.fillStyle = "#ccc";
+        ctx.fillRect(button.x, button.y, button.width, button.height);
+        ctx.strokeRect(button.x, button.y, button.width, button.height);
+
+        ctx.fillStyle = "#000";
+        ctx.fillText(button.text, button.x + 5, button.y + 30);
+    }
+}
+
+function drawPlayerMoney() {
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "left";
+    ctx.fillText(`Geld: ${playerMoney}`, 10, 30); // Zeigt den Geldwert in der oberen linken Ecke des Canvas an
+}
+
+
+canvas.addEventListener("click", function(e) {
+    const mouseX = e.clientX - canvas.offsetLeft;
+    const mouseY = e.clientY - canvas.offsetTop;
+
+	console.log(mouseX, mouseY, playerMoney)
+
+    for (let button of buttons) {
+        if (mouseX > button.x && mouseX < button.x + button.width &&
+            mouseY > button.y && mouseY < button.y + button.height) {
+            if (playerMoney >= button.cost) {
+                button.onClick();
+				playerMoney -= button.cost;
+            }
+        }
+    }
+});
 
 initializeGame()
 setInterval(update, 1000 / 60);
