@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Pong Spiel</title>
+    <style>
+        body { font-family: Arial; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #282c34; }
+        canvas { border: 1px solid white; }
+    </style>
+</head>
+<body>
+<canvas id="pong" width="800" height="400"></canvas>
+<script>
+    const canvas = document.getElementById("pong");
+    const ctx = canvas.getContext("2d");
+
+    // Ball-Objekt
+    const ball = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        radius: 10,
+        speed: 4,
+        dx: 4,
+        dy: 4
+    };
+
+    // Schläger-Objekt
+    const paddle = {
+        width: 10,
+        height: 60,
+        dy: 4,
+        left: { x: 0, y: canvas.height / 2 - 30 },
+        right: { x: canvas.width - 10, y: canvas.height / 2 - 30 }
+    };
+
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawPaddle(x, y) {
+        ctx.beginPath();
+        ctx.rect(x, y, paddle.width, paddle.height);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        ctx.closePath();
+    }
+	
+	const keys = {};
+
+	document.addEventListener("keydown", function(event) {
+		keys[event.keyCode] = true;
+	});
+
+	document.addEventListener("keyup", function(event) {
+		keys[event.keyCode] = false;
+	});
+	
+	function movePaddles() {
+		// W
+		if (keys[87] && paddle.left.y > 0) {
+			paddle.left.y -= paddle.dy;
+		}
+
+		// S
+		if (keys[83] && paddle.left.y < canvas.height - paddle.height) {
+			paddle.left.y += paddle.dy;
+		}
+
+		// Pfeil nach oben
+		if (keys[38] && paddle.right.y > 0) {
+			paddle.right.y -= paddle.dy;
+		}
+
+		// Pfeil nach unten
+		if (keys[40] && paddle.right.y < canvas.height - paddle.height) {
+			paddle.right.y += paddle.dy;
+		}
+	}
+
+    movePaddles(paddle.left, 87, 83); // W und S für den linken Schläger
+    movePaddles(paddle.right, 38, 40); // Pfeil nach oben und unten für den rechten Schläger
+
+	function update() {
+		movePaddles();
+
+		ball.x += ball.dx;
+		ball.y += ball.dy;
+
+        // Ball-Kollision mit dem oberen und unteren Rand
+        if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+            ball.dy = -ball.dy;
+        }
+
+        // Ball-Kollision mit den Schlägern
+        if (
+            (ball.x - ball.radius < paddle.left.x + paddle.width &&
+                ball.y + ball.radius > paddle.left.y &&
+                ball.y - ball.radius < paddle.left.y + paddle.height) ||
+            (ball.x + ball.radius > paddle.right.x &&
+                ball.y + ball.radius > paddle.right.y &&
+                ball.y - ball.radius < paddle.right.y + paddle.height)
+        ) {
+            ball.dx = -ball.dx;
+        }
+
+        // Ball außerhalb des Bildschirms (links/rechts)
+        if (ball.x + ball.radius > canvas.width) {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = -ball.dx;
+        } else if (ball.x - ball.radius < 0) {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = -ball.dx;
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBall();
+        drawPaddle(paddle.left.x, paddle.left.y);
+        drawPaddle(paddle.right.x, paddle.right.y);
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+
+</script>
+</body>
+</html>

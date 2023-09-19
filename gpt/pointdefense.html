@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Point Defense Spiel</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #282c34;
+            display: block;
+            margin: auto;
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+        }
+    </style>
+</head>
+<body>
+<canvas id="game" width="800" height="600"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const core = {
+	x: canvas.width / 2,
+	y: canvas.height / 2,
+	radius: 30,
+	health: 100
+};
+
+const player = {
+	x: canvas.width / 2,
+	y: canvas.height / 2 + 50,
+	radius: 10,
+	speed: 5,
+	dx: 0,
+	dy: 0,
+    facing: 'down',  // Neue Eigenschaft, um die Blickrichtung zu verfolgen
+    attackRange: 20,  // Neue Eigenschaft für den Angriffsbereich
+    isAttacking: false
+};
+
+// Gegner
+const enemies = [];
+
+function spawnEnemy() {
+    const enemy = {
+        x: Math.random() * canvas.width,
+        y: 0,
+        radius: 5,
+        speed: 2,
+        dx: 0,
+        dy: 2,
+        hp: 2 // Zum Beispiel, du kannst diesen Wert je nach Schwierigkeitsgrad anpassen
+    };
+    enemies.push(enemy);
+}
+
+
+function drawCircle(x, y, r, color) {
+	ctx.beginPath();
+	ctx.arc(x, y, r, 0, Math.PI * 2);
+	ctx.fillStyle = color;
+	ctx.fill();
+	ctx.closePath();
+}
+
+function updateEnemyDirection(enemy) {
+    const dx = core.x - enemy.x;
+    const dy = core.y - enemy.y;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    enemy.dx = (dx / distance) * enemy.speed;
+    enemy.dy = (dy / distance) * enemy.speed;
+}
+
+function moveEnemies() {
+    enemies.forEach(enemy => {
+        updateEnemyDirection(enemy);  // Setze die Richtung des Gegners zum Kern
+        enemy.x += enemy.dx;
+        enemy.y += enemy.dy;
+    });
+}
+
+function movePlayer() {
+	document.addEventListener("keydown", function(event) {
+		switch(event.keyCode) {
+			case 37:  // Left
+				player.dx = -player.speed;
+				player.facing = 'left';
+				break;
+			case 38:  // Up
+				player.dy = -player.speed;
+				player.facing = 'up';
+				break;
+			case 39:  // Right
+				player.dx = player.speed;
+				player.facing = 'right';
+				break;
+			case 40:  // Down
+				player.dy = player.speed;
+				player.facing = 'down';
+				break;
+			case 32:  // Leertaste - Angreifen
+				attack();
+				break;
+		}
+	});
+	
+	document.addEventListener("keyup", function(event) {
+		switch(event.keyCode) {
+			case 37:  
+			case 39:
+				player.dx = 0;
+				break;
+			case 38:
+			case 40:
+				player.dy = 0;
+				break;
+		}
+	});
+}
+
+class Ally {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.hp = 10; // Example HP value, can be adjusted
+    }
+    
+    moveTowards(targetX, targetY, speed) {
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance === 0) return;
+
+        this.x += (dx / distance) * speed;
+        this.y += (dy / distance) * speed;
+    }
+}
+
+
+function attack() {
+    player.isAttacking = true;
+    setTimeout(() => {
+        player.isAttacking = false;
+    }, 200);  // Hitbox für 0,2 Sekunden anzeigen
+	enemies.forEach(enemy => {
+		switch (player.facing) {
+			case 'left':
+				if (enemy.x < player.x && enemy.x > player.x - player.attackRange &&
+					Math.abs(enemy.y - player.y) < player.radius) {
+					enemy.hp -= 1;
+				}
+				break;
+			case 'right':
+				if (enemy.x > player.x && enemy.x < player.x + player.attackRange &&
+					Math.abs(enemy.y - player.y) < player.radius) {
+					enemy.hp -= 1;
+				}
+				break;
+			case 'up':
+				if (enemy.y < player.y && enemy.y > player.y - player.attackRange &&
+					Math.abs(enemy.x - player.x) < player.radius) {
+					enemy.hp -= 1;
+				}
+				break;
+			case 'down':
+				if (enemy.y > player.y && enemy.y < player.y + player.attackRange &&
+					Math.abs(enemy.x - player.x) < player.radius) {
+					enemy.hp -= 1;
+				}
+				break;
+		}
+	});
+
+	// Feinde entfernen, die keine HP mehr haben
+	for (let i = enemies.length - 1; i >= 0; i--) {
+		if (enemies[i].hp <= 0) {
+			enemies.splice(i, 1);
+		}
+	}
+}
+
+
+movePlayer();
+
+function update() {
+    movePlayer();
+    moveEnemies();
+    updateAllies();
+    updateProjectiles();
+
+	player.x += player.dx;
+	player.y += player.dy;
+
+	enemies.forEach(enemy => {
+		enemy.y += enemy.dy;
+	});
+
+	// Gegnerwellen (hier nur 3 Wellen als Beispiel)
+	if (enemies.length === 0) {
+		for (let i = 0; i < 3; i++) {
+			spawnEnemy();
+		}
+	}
+
+	// ... weitere Spiellogik (Kollisionserkennung, Gesundheit, usw.)
+
+	draw();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawCircle(core.x, core.y, core.radius, "blue");
+    drawCircle(player.x, player.y, player.radius, "green");
+
+    if (player.isAttacking) {
+        ctx.fillStyle = "rgba(255,255,0,0.5)";  // Gelb und halbtransparent
+        switch (player.facing) {
+            case 'left':
+                ctx.fillRect(player.x - player.attackRange, player.y - player.radius, player.attackRange, player.radius * 2);
+                break;
+            case 'right':
+                ctx.fillRect(player.x, player.y - player.radius, player.attackRange, player.radius * 2);
+                break;
+            case 'up':
+                ctx.fillRect(player.x - player.radius, player.y - player.attackRange, player.radius * 2, player.attackRange);
+                break;
+            case 'down':
+                ctx.fillRect(player.x - player.radius, player.y, player.radius * 2, player.attackRange);
+                break;
+        }
+    }
+
+    enemies.forEach(enemy => {
+        drawCircle(enemy.x, enemy.y, enemy.radius, "red");
+    });
+	
+	drawAllies();
+	drawProjectiles()
+    ctx.fillStyle = "#ff6600";  // Color for projectiles
+    projectiles.forEach(proj => {
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, proj.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.fillStyle = "#0099cc";  // Color for shooter allies
+    allies.forEach(ally => {
+        if (ally instanceof ShooterAlly) {
+            ctx.beginPath();
+            ctx.arc(ally.x, ally.y, 10, 0, Math.PI * 2); // Assuming radius of 10 for simplicity
+            ctx.fill();
+        }
+    });
+}
+
+const allies = [];  // Liste von Mitkämpfern
+
+// Eine Funktion zum Erzeugen eines neuen Mitkämpfers
+function spawnAlly(x, y) {
+    const ally = {
+        x: x,
+        y: y,
+        radius: 10,
+        attackRange: 30,
+        attackCooldown: 1000,  // 1 Sekunde Angriffskühldauer
+        lastAttack: Date.now(),
+    };
+    allies.push(ally);
+}
+
+function allyAttack(ally) {
+    const attackRadius = 30;  // Radius, in dem der Ally angreifen kann
+    const damage = 1;  // Schadensmenge, die der Ally pro Angriff verursacht
+
+    enemies.forEach(enemy => {
+        const dx = enemy.x - ally.x;
+        const dy = enemy.y - ally.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < attackRadius) {
+            enemy.hp -= damage;
+            if (enemy.hp <= 0) {
+                // Entferne den Feind aus der Liste, wenn seine HP 0 erreicht
+                const index = enemies.indexOf(enemy);
+                if (index !== -1) {
+                    enemies.splice(index, 1);
+                }
+            }
+        }
+    });
+}
+
+function updateAllies() {
+    allies.forEach(ally => {
+        updateAllyMovement(ally);
+        
+        if (ally instanceof ShooterAlly) {
+            updateShooterAlly(ally);
+        } else {
+            allyAttack(ally);
+        }
+    });
+}
+
+
+
+function drawAllies() {
+    ctx.fillStyle = "cyan";
+    allies.forEach(ally => {
+        ctx.beginPath();
+        ctx.arc(ally.x, ally.y, ally.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Zeichne die Angriffsreichweite
+        ctx.strokeStyle = "rgba(0,255,255,0.3)";  // Hellcyan und halbtransparent
+        ctx.beginPath();
+        ctx.arc(ally.x, ally.y, ally.attackRange, 0, Math.PI * 2);
+        ctx.stroke();
+    });
+}
+
+
+function initializeGame() {
+    spawnAlly(100, canvas.height / 2);  // Mitkämpfer links
+    spawnAlly(canvas.width - 100, canvas.height / 2);  // Mitkämpfer rechts
+    //spawnAlly(canvas.width / 2, 100);  // Mitkämpfer oben
+    //spawnAlly(canvas.width / 2, canvas.height - 100);  // Mitkämpfer unten
+    allies.push(new ShooterAlly(250, 250));  // Add a shooter ally for testing
+    allies.push(new ShooterAlly(290, 250));  // Add a shooter ally for testing
+    allies.push(new ShooterAlly(230, 250));  // Add a shooter ally for testing
+}
+
+function getDirectionToClosestEnemy(ally) {
+    let closestEnemy = null;
+    let closestDistance = Infinity;
+    let dx = 0, dy = 0;
+
+    enemies.forEach(enemy => {
+        const distanceX = enemy.x - ally.x;
+        const distanceY = enemy.y - ally.y;
+        const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestEnemy = enemy;
+            dx = distanceX;
+            dy = distanceY;
+        }
+    });
+
+    return { dx, dy };
+}
+
+function getAvoidanceDirection(ally) {
+    let avoidanceX = 0, avoidanceY = 0;
+    const minAvoidDistance = 50; // Erhöhe den Mindestabstand
+    const avoidanceStrength = 2; // Stärke der Vermeidung
+
+    allies.forEach(other => {
+        if (other === ally) return;
+
+        const distanceX = other.x - ally.x;
+        const distanceY = other.y - ally.y;
+        const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+        if (distance < minAvoidDistance) {
+            avoidanceX -= distanceX * avoidanceStrength;
+            avoidanceY -= distanceY * avoidanceStrength;
+        }
+    });
+
+    return { dx: avoidanceX, dy: avoidanceY };
+}
+
+
+function updateAllyMovement(ally) {
+    const enemyDirection = getDirectionToClosestEnemy(ally);
+    const avoidanceDirection = getAvoidanceDirection(ally);
+    
+    // Hier legen wir die Prioritäten fest
+    const followWeight = 1; 
+    const avoidWeight = 2; // Erhöhe die Priorität der Vermeidung
+    
+    const dx = enemyDirection.dx * followWeight + avoidanceDirection.dx * avoidWeight;
+    const dy = enemyDirection.dy * followWeight + avoidanceDirection.dy * avoidWeight;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance === 0) return;
+
+    const speed = 2;
+
+    ally.x += (dx / distance) * speed;
+    ally.y += (dy / distance) * speed;
+}
+
+class Projectile {
+    constructor(x, y, targetX, targetY) {
+        this.x = x;
+        this.y = y;
+        this.radius = 5;
+        
+        const dx = targetX - x;
+        const dy = targetY - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // These represent the direction of the projectile's movement.
+        this.dirX = dx / distance;
+        this.dirY = dy / distance;
+
+        this.speed = 10;
+        this.distanceTraveled = 0;
+        this.maxDistance = 1000; // Adjust this value to your liking
+    }
+}
+
+
+class ShooterAlly extends Ally {
+    constructor(x, y) {
+        super(x, y);
+        this.attackCooldown = 60; // Shoots a projectile every 60 frames
+        this.currentCooldown = 0;
+    }
+}
+
+function updateAllies() {
+    allies.forEach(ally => {
+        updateAllyMovement(ally);
+        
+        if (ally instanceof ShooterAlly) {
+            updateShooterAlly(ally);
+        } else {
+            allyAttack(ally);
+        }
+    });
+}
+
+function getClosestEnemy(entity) {
+    let closestEnemy = null;
+    let closestDistance = Infinity;
+
+    enemies.forEach(enemy => {
+        const dx = enemy.x - entity.x;
+        const dy = enemy.y - entity.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestEnemy = enemy;
+        }
+    });
+
+    return closestEnemy; // This will be null if there are no enemies
+}
+
+
+let projectiles = [];
+
+function updateShooterAlly(ally) {
+    ally.currentCooldown--;
+
+    if (ally.currentCooldown <= 0) {
+        const targetEnemy = getClosestEnemy(ally);
+        if (targetEnemy) {
+            projectiles.push(new Projectile(ally.x, ally.y, targetEnemy.x, targetEnemy.y));
+            ally.currentCooldown = ally.attackCooldown;
+        }
+    }
+}
+
+function updateProjectiles() {
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const proj = projectiles[i];
+        
+        proj.distanceTraveled += proj.speed;
+
+        if (proj.distanceTraveled > proj.maxDistance) {
+            projectiles.splice(i, 1);  // Remove projectile after max distance
+            continue;
+        }
+        
+        // Move the projectile based on its direction
+        proj.x += proj.dirX * proj.speed;
+        proj.y += proj.dirY * proj.speed;
+
+        // Check for collision with any enemy
+        if (isCollidingWithEnemy(proj)) {
+            projectiles.splice(i, 1);
+            dealDamageToClosestEnemy(proj);
+        }
+    }
+}
+
+
+function isCollidingWithEnemy(projectile) {
+    for (let enemy of enemies) {
+        const dx = projectile.x - enemy.x;
+        const dy = projectile.y - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance <= enemy.radius + projectile.radius) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+function drawProjectiles() {
+    ctx.fillStyle = 'orange';
+    for (let proj of projectiles) {
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, proj.radius, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+}
+
+
+
+function dealDamageToClosestEnemy(projectile) {
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        const dx = projectile.x - enemy.x;
+        const dy = projectile.y - enemy.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Assuming both the enemy and projectile have a radius of 10 for collision.
+        if (distance <= 20) { 
+            enemy.hp -= 1; // or any damage value you prefer
+            if (enemy.hp <= 0) {
+                enemies.splice(i, 1);
+            }
+            return;  // Exit after dealing damage to one enemy
+        }
+    }
+}
+
+
+
+
+initializeGame()
+setInterval(update, 1000 / 60);
+
+</script>
+</body>
+</html>
