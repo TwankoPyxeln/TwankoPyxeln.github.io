@@ -9,8 +9,8 @@ function floodfilltick(){
             floodfillqueue.push({x:pos.x-1,y:pos.y})
             floodfillqueue.push({x:pos.x,y:pos.y-1})
         }
+        zeichneQueue()
     }
-    zeichneQueue()
 }
 
 function zeichneQueue(){

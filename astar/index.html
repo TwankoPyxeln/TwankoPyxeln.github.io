@@ -30,15 +30,18 @@
         <canvas id="myCanvas" width="800" height="450" onclick="leinwandKlick(event)"></canvas>
         <div id="controls">
             <button onclick="setzeModus('wand')">Wand</button>
+            <button onclick="clearAll()">Leeren</button>
             <button onclick="setzeModus('leer')">Leer</button>
             <button onclick="setzeModus('start')">StartPunkt</button>
             <button onclick="setzeModus('ziel')">ZielPunkt</button>
             <button onclick="setzeModus('flood')">FloodFill</button>
+            <button onclick="setzeModus('distanz')">DistanzKarte</button>
         </div>
     </div>
 
     <script src="CavasArray.js"></script>
     <script src="script.js"></script>
     <script src="floodfill.js"></script>
+    <script src="distanzkarte.js"></script>
 </body>
 </html>
