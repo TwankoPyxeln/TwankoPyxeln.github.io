@@ -1,0 +1,44 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Wegfindungs-Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <canvas id="myCanvas" width="800" height="450" onclick="leinwandKlick(event)"></canvas>
+        <div id="controls">
+            <button onclick="setzeModus('wand')">Wand</button>
+            <button onclick="setzeModus('leer')">Leer</button>
+            <button onclick="setzeModus('start')">StartPunkt</button>
+            <button onclick="setzeModus('ziel')">ZielPunkt</button>
+            <button onclick="setzeModus('flood')">FloodFill</button>
+        </div>
+    </div>
+
+    <script src="CavasArray.js"></script>
+    <script src="script.js"></script>
+    <script src="floodfill.js"></script>
+</body>
+</html>
